@@ -1,4 +1,5 @@
 from textnode import TextNode, TextType
+import re
 
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type, closing_delimiter=None):
@@ -69,20 +70,68 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type, closing_delimiter=Non
         node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
         new_nodes.append(TextNode(current_text,node_type))
 
-    #print(new_nodes)
-    return new_nodes
+    return new_nodes    
+
+def regex_find_image(text):
+    matches = re.findall(r"!\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
+    return matches
+
+def regex_find_link(text):
+    matches = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
+    return matches
+
+def split_nodes_image(text, find_image):
+    new_text = text
+    new_nodes = []
+    matches = find_image(text)
     
+    #print(matches)
+    i=0
+    for i in range(len(matches)):
+        split_text = new_text.split(f"![{matches[i][0]}]({matches[i][1]})",1)
+        split_text1 = split_text[0]
+        new_text = split_text[1]
+        new_nodes.append(TextNode(split_text1,TextType.PLAIN_TEXT))
+        new_nodes.append(TextNode(matches[i][0],TextType.IMAGE,matches[i][1]))
+        i+=1
+    
+    if new_text:
+        new_nodes.append(TextNode(new_text, TextType.PLAIN_TEXT))
+    
+    return new_nodes
 
-#split_nodes_delimiter("This is an ![IMAGE] that I'm trying to upload", "![", TextType.IMAGE,"]")
-#bold = split_nodes_delimiter("This is some **bold text** that I'm trying to implement", "**", TextType.BOLD_TEXT)
-#print(bold)
-#split_nodes_delimiter("This is the text that I'm trying to _ACTION edit) for the test cycle", "_", TextType.ITALIC_TEXT, ")")    
-#split_nodes_delimiter("This is the text that I'm trying to ![ACTION** edit) for the test cycle", "![", TextType.IMAGE, "**")
-"""
-GOAL - create TextNodes from Markdown strings
 
-Not worry about nested inline elements.
+#split_nodes_image("This is text with a link ![to boot dev](https://www.boot.dev) and ![to youtube](https://www.youtube.com/@bootdotdev)", regex_find_image)
+#split_nodes_image("This is text with a link ![to boot dev](https://www.boot.dev) and ![to youtube](https://www.youtube.com/@bootdotdev) along with some extra text.", regex_find_image)
+    
+def split_nodes_link(text, find_link):
+    new_text = text
+    
+    new_nodes = []
+    
+    matches = find_link(text)
+    
+    #print(matches)
+    i=0
+    for i in range(len(matches)):
+        split_text = new_text.split(f"[{matches[i][0]}]({matches[i][1]})",1)
+        split_text1 = split_text[0]
+        new_text = split_text[1]
+        new_nodes.append(TextNode(split_text1,TextType.PLAIN_TEXT))
+        new_nodes.append(TextNode(matches[i][0],TextType.LINK,matches[i][1]))
+        i+=1
+    
+    if new_text:
+        new_nodes.append(TextNode(new_text, TextType.PLAIN_TEXT))
+    
+    return new_nodes
 
-Create a function that splits the old nodes, with delimeter and text type.
+#split_nodes_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", regex_find_link)
+#split_nodes_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev) along with some extra text.", regex_find_link)
 
-"""
+
+
+#t4_no_url = regex_find_link("This is a [screenshot] of my screen and also a [profile pic] and the [company logo]")
+#result2 = regex_find_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)")
+#print(t4_no_url)
+#print(result2)

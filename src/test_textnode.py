@@ -1,7 +1,6 @@
 import unittest
-
 from textnode import TextNode, TextType
-from delimiter import split_nodes_delimiter
+from delimiter import split_nodes_delimiter, regex_find_image, regex_find_link, split_nodes_image, split_nodes_link
 
 class TestTextNode(unittest.TestCase):
     def test_eq_bold(self):
@@ -160,7 +159,191 @@ class TestDelimiter(unittest.TestCase):
 
             link_multi = split_nodes_delimiter("This is the text [that I'm trying] to edit for the [test cycle]", "[", TextType.LINK,"]")
             self.assertEqual(link_multi, [TextNode("This is the text ", TextType.PLAIN_TEXT), TextNode("that I'm trying",TextType.LINK), TextNode(" to edit for the ", TextType.PLAIN_TEXT), TextNode("test cycle", TextType.LINK)])
+
+class TestRegexFunctions(unittest.TestCase):
+
+    def test_regex_image(self):
+        t1_single = regex_find_image("This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)")
+        t2_duo = regex_find_image("This is a ![screenshot](https://example.com/images/screen.png) of my screen and also a ![profile pic](https://i.imgur.com/abc123.jpg)")
+        t3_trio = regex_find_image("This is a ![screenshot](https://example.com/images/screen.png) of my screen and also a ![profile pic](https://i.imgur.com/abc123.jpg) and the ![company logo](https://cdn.company.com/logo.svg)")
+        self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], t1_single)
+        self.assertListEqual([("screenshot", "https://example.com/images/screen.png"),("profile pic", "https://i.imgur.com/abc123.jpg")], t2_duo)
+        self.assertListEqual([("screenshot", "https://example.com/images/screen.png"),("profile pic", "https://i.imgur.com/abc123.jpg"), ("company logo", "https://cdn.company.com/logo.svg") ], t3_trio)
+
+    def test_regex_link(self):
+        t1_single = regex_find_link("This is text with an [image](https://i.imgur.com/zjjcJKZ.png)")
+        t2_duo = regex_find_link("This is a [screenshot](https://example.com/images/screen.png) of my screen and also a [profile pic](https://i.imgur.com/abc123.jpg)")
+        t3_trio = regex_find_link("This is a [screenshot](https://example.com/images/screen.png) of my screen and also a [profile pic](https://i.imgur.com/abc123.jpg) and the [company logo](https://cdn.company.com/logo.svg)")
+        t4_no_url = regex_find_link("This is a [screenshot] of my screen and also a [profile pic] and the [company logo]")
+
+        self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], t1_single)
+        self.assertListEqual([("screenshot", "https://example.com/images/screen.png"),("profile pic", "https://i.imgur.com/abc123.jpg")], t2_duo)
+        self.assertListEqual([("screenshot", "https://example.com/images/screen.png"),("profile pic", "https://i.imgur.com/abc123.jpg"), ("company logo", "https://cdn.company.com/logo.svg") ], t3_trio)
+        #self.assertListEqual([("screenshot"),("profile pic"), ("company logo") ], t4_no_url)
+
+
+class TestSplitNodes(unittest.TestCase):
+    def test_split_image(self):
+        node = TextNode (
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_image(node.text, regex_find_image)
+
+        self.assertListEqual([
+            TextNode("This is text with an ", TextType.PLAIN_TEXT),
+            TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("second image", TextType.IMAGE,"https://i.imgur.com/3elNhQu.png"),
+        ], new_nodes)
+
+        node = TextNode (
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png) and some following text",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_image(node.text, regex_find_image)
+
+        self.assertListEqual([
+            TextNode("This is text with an ", TextType.PLAIN_TEXT),
+            TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("second image", TextType.IMAGE,"https://i.imgur.com/3elNhQu.png"),
+            TextNode(" and some following text", TextType.PLAIN_TEXT),
+        ], new_nodes)
+        
+        node = TextNode (
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png) and some following text and a ![third image](https://i.imgur.com/3elNhQu.png)![fourth image](https://i.imgur.com/3elNhQu.png)",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_image(node.text, regex_find_image)
+
+        self.assertListEqual([
+            TextNode("This is text with an ", TextType.PLAIN_TEXT),
+            TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("second image", TextType.IMAGE,"https://i.imgur.com/3elNhQu.png"),
+            TextNode(" and some following text and a ", TextType.PLAIN_TEXT),
+            TextNode("third image", TextType.IMAGE,"https://i.imgur.com/3elNhQu.png"),
+            TextNode("", TextType.PLAIN_TEXT),
+            TextNode("fourth image", TextType.IMAGE,"https://i.imgur.com/3elNhQu.png")
+        ], new_nodes)
+
+
+
+        #node = TextNode (
+        #    "This is text with an image that has no text, just url ![](https://i.imgur.com/zjjcJKZ.png)",
+        #TextType.PLAIN_TEXT,
+        #)
+        
+        #new_nodes = split_nodes_link(node.text, regex_find_link)
+
+        #self.assertListEqual([
+        #    TextNode("This is text with an image that has no text, just url ", TextType.PLAIN_TEXT),
+        #    TextNode("", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
             
+        #], new_nodes
+        #)
+
+    def test_split_link(self):
+        node = TextNode (
+            "This is text with a [link](https://i.imgur.com/zjjcJKZ.png) and another [link](https://i.imgur.com/3elNhQu.png)",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_link(node.text, regex_find_link)
+
+        self.assertListEqual([
+            TextNode("This is text with a ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK,"https://i.imgur.com/3elNhQu.png"),
+        ], new_nodes)
+
+        node = TextNode (
+            "This is text with a [link](https://i.imgur.com/zjjcJKZ.png) and another [link](https://i.imgur.com/3elNhQu.png) and some following text",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_link(node.text, regex_find_link)
+
+        self.assertListEqual([
+            TextNode("This is text with a ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK,"https://i.imgur.com/3elNhQu.png"),
+            TextNode(" and some following text", TextType.PLAIN_TEXT),
+        ], new_nodes)
+        
+        node = TextNode (
+            "This is text with a [link](https://i.imgur.com/zjjcJKZ.png) and another [second link](https://i.imgur.com/3elNhQu.png) and some following text and a [third link](https://i.imgur.com/3elNhQu.png)[fourth link](https://i.imgur.com/3elNhQu.png)",
+        TextType.PLAIN_TEXT,
+        )
+        
+        new_nodes = split_nodes_link(node.text, regex_find_link)
+
+        self.assertListEqual([
+            TextNode("This is text with a ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.PLAIN_TEXT),
+            TextNode("second link", TextType.LINK,"https://i.imgur.com/3elNhQu.png"),
+            TextNode(" and some following text and a ", TextType.PLAIN_TEXT),
+            TextNode("third link", TextType.LINK,"https://i.imgur.com/3elNhQu.png"),
+            TextNode("", TextType.PLAIN_TEXT),
+            TextNode("fourth link", TextType.LINK,"https://i.imgur.com/3elNhQu.png")
+        ], new_nodes)
+
+        #node = TextNode (
+        #    "This is text with a link that has no text, just url [](https://i.imgur.com/zjjcJKZ.png)",
+        #TextType.PLAIN_TEXT,
+        #)
+        
+        #new_nodes = split_nodes_link(node.text, regex_find_link)
+
+        #self.assertListEqual([
+        #    TextNode("This is text with a link that has no text, just url ", TextType.PLAIN_TEXT),
+        #    TextNode("", TextType.LINK, "https://i.imgur.com/zjjcJKZ.png"),
+            
+        #], new_nodes
+    #)
+
+
+"""
+
+ node = TextNode(
+        "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+        TextType.TEXT,
+    )
+    new_nodes = split_nodes_image([node])
+    self.assertListEqual(
+        [
+            TextNode("This is text with an ", TextType.TEXT),
+            TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and another ", TextType.TEXT),
+            TextNode(
+                "second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"
+            ),
+        ],
+        new_nodes,
+    )
+# Image tuples
+
+[("profile pic", "https://i.imgur.com/abc123.jpg")]
+[("screenshot", "https://example.com/images/screen.png")]
+[("company logo", "https://cdn.company.com/logo.svg")]
+[("chart", "https://data.viz/chart-2024.gif")]
+[("avatar", "https://assets.site.com/user/avatar.webp")]
+
+# Link tuples  
+[("Boot Dev", "https://www.boot.dev")]
+[("GitHub repo", "https://github.com/user/project")]
+[("documentation", "https://docs.python.org/3/")]
+[("tutorial", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
+[("portfolio", "https://mysite.dev/projects")]
+
+"""
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main() 
