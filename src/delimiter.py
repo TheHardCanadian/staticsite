@@ -1,70 +1,33 @@
 from textnode import TextNode, TextType
-import re
+import re   
 
 
-def split_nodes_delimiter(old_nodes, delimiter, text_type, closing_delimiter=None):
-    
-    delimiters = {'bold':["**", "__"],
-                  "italic": ["*", "_"],
-                  "code":["`"], 
-                  "image":["!["], 
-                  "link":["["]
+delimiters = {'bold':["**", "__"],
+              "italic": ["*", "_"],
+              "code":["`"], 
     }
 
-    closing_delimiters = {"image": "]",
-                          "link": "]"
-                          }
+def split_nodes_delimiter(old_nodes, delimiter, text_type):
     
     #def delimit_string(inside_delimiter, new_nodes)
     if delimiter not in delimiters[text_type.value]:
         raise Exception("Delimiter error: Improper delimiter")
-    if closing_delimiter:
-        if text_type.value not in closing_delimiters:
-            raise KeyError(f"Text type {text_type.value} does not support closing delimiters")
-        if closing_delimiter != closing_delimiters[text_type.value]:
-            raise Exception("Delimiter error: Improper closing delimiter")
-            
+
     current_text = ""
     new_nodes = []
     inside_delimiter = False
     i=0
     while i < len(old_nodes):
-        if closing_delimiter:
-            if old_nodes[i:].startswith(closing_delimiter) and not inside_delimiter:
-                raise Exception("Delimeter error: Closing delimeter not lead by opening delimeter")
-            elif old_nodes[i:].startswith(delimiter) and inside_delimiter:
-                raise Exception("Delimeter error: Delimeter not followed by closing delimeter")
-            if old_nodes[i:].startswith(delimiter):
-                #found delimeter
-                if current_text: #this means if the string is not empty
-                    node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
-                    new_nodes.append(TextNode(current_text,node_type))
-                    current_text = ""
-                inside_delimiter = not inside_delimiter
-                i += len(delimiter)
-
-            elif old_nodes[i:].startswith(closing_delimiter):
-                if current_text: #this means if the string is not empty
-                    node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
-                    new_nodes.append(TextNode(current_text,node_type))
-                    current_text = ""
-                inside_delimiter = not inside_delimiter
-                i += len(closing_delimiter)
-
-            else:
-                current_text += old_nodes[i]
-                i+=1
-        elif closing_delimiter == None:
-            if old_nodes[i:].startswith(delimiter):
-                if current_text: #this means if the string is not empty
-                    node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
-                    new_nodes.append(TextNode(current_text,node_type))
-                    current_text = ""
-                inside_delimiter = not inside_delimiter
-                i += len(delimiter)
-            else:
-                current_text += old_nodes[i]
-                i+=1
+        if old_nodes[i:].startswith(delimiter):
+            if current_text: #this means if the string is not empty
+                node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
+                new_nodes.append(TextNode(current_text,node_type))
+                current_text = ""
+            inside_delimiter = not inside_delimiter
+            i += len(delimiter)
+        else:
+            current_text += old_nodes[i]
+            i+=1
 
     if current_text:
         node_type = text_type if inside_delimiter else TextType.PLAIN_TEXT
@@ -99,10 +62,6 @@ def split_nodes_image(text, find_image):
         new_nodes.append(TextNode(new_text, TextType.PLAIN_TEXT))
     
     return new_nodes
-
-
-#split_nodes_image("This is text with a link ![to boot dev](https://www.boot.dev) and ![to youtube](https://www.youtube.com/@bootdotdev)", regex_find_image)
-#split_nodes_image("This is text with a link ![to boot dev](https://www.boot.dev) and ![to youtube](https://www.youtube.com/@bootdotdev) along with some extra text.", regex_find_image)
     
 def split_nodes_link(text, find_link):
     new_text = text
@@ -126,12 +85,57 @@ def split_nodes_link(text, find_link):
     
     return new_nodes
 
-#split_nodes_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", regex_find_link)
-#split_nodes_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev) along with some extra text.", regex_find_link)
+def text_to_textnodes(text):
 
+    text_type_map = {
+        "bold":TextType.BOLD_TEXT,
+        "italic":TextType.ITALIC_TEXT,
+        "code":TextType.CODE_TEXT,
+        "image":TextType.IMAGE,
+        "link": TextType.LINK
+    }
 
+    text_node = [TextNode(text,TextType.PLAIN_TEXT)]
+    new_node = text_node
 
-#t4_no_url = regex_find_link("This is a [screenshot] of my screen and also a [profile pic] and the [company logo]")
-#result2 = regex_find_link("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)")
-#print(t4_no_url)
-#print(result2)
+    temp_node=[]
+    for node in new_node:
+        if node.text_type == TextType.PLAIN_TEXT:
+            temp_node.extend(split_nodes_image(node.text, regex_find_image))
+        else:
+            temp_node.append(node)
+    new_node = temp_node
+
+    temp_node=[]
+    for node in new_node:
+        if node.text_type == TextType.PLAIN_TEXT:
+            temp_node.extend(split_nodes_link(node.text, regex_find_link))
+        else:
+            temp_node.append(node)
+    new_node = temp_node
+
+    for text_type, delimiter_list in delimiters.items():
+        for delimiter in delimiter_list:
+            temp_node=[]
+            for node in new_node:
+                if node.text_type == TextType.PLAIN_TEXT:
+                    new_split = split_nodes_delimiter(node.text, delimiter, text_type_map[text_type])
+                    temp_node.extend(new_split)
+                else:
+                    temp_node.append(node) 
+            new_node = temp_node                                                                                                                                                                                                                                                             
+    #print(f"Delimiter Node Output: {new_node}")
+
+    #loop through new_node and use regex image for each
+    
+
+    #print(f"Final Node Output: {new_node}")
+    return new_node
+
+#text_to_textnodes("This is **bold text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)")
+#text_to_textnodes("This is **bold text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev) and some more text to top it off")
+#text_to_textnodes("This is **bold text** with an _italic_ word and a `code block` and a `second code block` and a `third code block` and a `fourth code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)")
+#text_to_textnodes("This is **bold text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)")
+#result = text_to_textnodes("This is **bold text** with an _italic_ word and another _italic word_ along with a **second bold text** followed by a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a ![Qui-Gon Jinn image] and a [link](https://boot.dev)")
+#print(result)
+
