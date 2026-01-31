@@ -127,6 +127,18 @@ def markdown_to_html(markdown):
         children.append(html_node)
     return ParentNode("div", children, None)
 
+def extract_markdown(markdown):
+    h1 = re.search(r'^#\s+.*', markdown, re.MULTILINE)
+
+    if h1 is None:
+        raise Exception("No Heading for Title")
+    
+    print(h1.group())
+    title = h1.group()
+    title = title.lstrip('# ')
+    print(title)
+    return title
+
 
 md = """
 This is **bolded** paragraph
@@ -142,3 +154,51 @@ html = node.to_html()
 print(html)
 #block = "#  A Tale of Two Cities"
 #print(block_to_block_type(block))
+
+markdown = """## Not Main Title - This is an H1 Header
+
+This is some introductory text under the main title. It contains regular paragraphs and some **bold text** and *italic text*.
+
+## Section One - H2 Header
+
+Here's content under the first section. This section talks about various topics.
+
+### Subsection A - H3 Header
+
+More detailed content here with some code examples:
+
+```python
+def hello_world():
+    print("Hello, World!")
+```
+
+## Section Two - H2 Header
+
+Another section with different content. This one has a list:
+
+- Item one
+- Item two  
+- Item three
+
+### Subsection B - H3 Header
+
+# Another H1 Header in the Middle - Should be Title
+
+This demonstrates multiple H1 headers in the same document.
+
+Some text with a [link](https://example.com) and an image reference.
+
+## Final Section
+
+#NotAHeader - this line doesn't start with # at beginning
+  # This is indented, so not a proper header
+
+# Last H1 Header
+
+Final content goes here.
+
+## Conclusion
+
+That's the end of our sample markdown file!"""
+
+print(extract_markdown(markdown))

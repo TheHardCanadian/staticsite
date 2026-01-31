@@ -1,6 +1,8 @@
 from textnode import TextType, TextNode
 import os
 from shutil import copy, rmtree
+import re
+from gencontent import generate_pages_recursive
 
 def source_to_dest(source, destination):
     #first - delete contents from source.
@@ -12,8 +14,6 @@ def source_to_dest(source, destination):
     
     print(f"Source path exists: {os.path.exists(source)}")
     print(f"Destination path exists: {os.path.exists(destination)}")
-
-
 
     dest_directory = os.listdir(destination)
     print(f"Destination directory being deleted: {dest_directory}")
@@ -49,11 +49,9 @@ def source_to_dest(source, destination):
 
     print(f"Final Destination:{os.listdir(destination)}")                
 
-
 def main():
     source_to_dest("static/", "public/") 
-
-
+    generate_pages_recursive('content', 'template.html', 'public')    
 
 if __name__ == "__main__":
     main()

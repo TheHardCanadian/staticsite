@@ -1,6 +1,6 @@
 import unittest
 from textnode import TextNode, TextType
-from blocks import split_blocks, BlockType, block_to_block_type, markdown_to_html
+from blocks import split_blocks, BlockType, block_to_block_type, markdown_to_html, extract_markdown
 
 
 class TestBlocks(unittest.TestCase):
@@ -479,6 +479,162 @@ this is paragraph text
             html,
             "<div><blockquote>This is a blockquote block</blockquote><p>this is paragraph text</p></div>",
         )
+
+
+class TestExtractHeaderTitle(unittest.TestCase):
+    def setUp(self):
+        self.maxDiff = None  # Show full diff output
+
+    def test_markdown_title(self):
+        markdown = """# Main Title - This is an H1 Header
+
+This is some introductory text under the main title. It contains regular paragraphs and some **bold text** and *italic text*.
+
+## Section One - H2 Header
+
+Here's content under the first section. This section talks about various topics.
+
+### Subsection A - H3 Header
+
+More detailed content here with some code examples:
+
+```python
+def hello_world():
+    print("Hello, World!")
+```
+
+## Section Two - H2 Header
+
+Another section with different content. This one has a list:
+
+- Item one
+- Item two  
+- Item three
+
+### Subsection B - H3 Header
+
+# Another H1 Header in the Middle
+
+This demonstrates multiple H1 headers in the same document.
+
+Some text with a [link](https://example.com) and an image reference.
+
+## Final Section
+
+#NotAHeader - this line doesn't start with # at beginning
+  # This is indented, so not a proper header
+
+# Last H1 Header
+
+Final content goes here.
+
+## Conclusion
+
+That's the end of our sample markdown file!"""
+
+        result = extract_markdown(markdown)
+        expected = "Main Title - This is an H1 Header"
+        self.assertEqual(result, expected)
+
+    def test_markdown_midtitle(self):
+        markdown = """## Not Main Title - This is an H1 Header
+
+This is some introductory text under the main title. It contains regular paragraphs and some **bold text** and *italic text*.
+
+## Section One - H2 Header
+
+Here's content under the first section. This section talks about various topics.
+
+### Subsection A - H3 Header
+
+More detailed content here with some code examples:
+
+```python
+def hello_world():
+    print("Hello, World!")
+```
+
+## Section Two - H2 Header
+
+Another section with different content. This one has a list:
+
+- Item one
+- Item two  
+- Item three
+
+### Subsection B - H3 Header
+
+# Another H1 Header in the Middle - Should be Title
+
+This demonstrates multiple H1 headers in the same document.
+
+Some text with a [link](https://example.com) and an image reference.
+
+## Final Section
+
+#NotAHeader - this line doesn't start with # at beginning
+  # This is indented, so not a proper header
+
+# Last H1 Header
+
+Final content goes here.
+
+## Conclusion
+
+That's the end of our sample markdown file!"""
+
+
+    def test_markdown_notitle(self):
+        markdown = """## Not Main Title - This is an H1 Header
+
+This is some introductory text under the main title. It contains regular paragraphs and some **bold text** and *italic text*.
+
+## Section One - H2 Header
+
+Here's content under the first section. This section talks about various topics.
+
+### Subsection A - H3 Header
+
+More detailed content here with some code examples:
+
+```python
+def hello_world():
+    print("Hello, World!")
+```
+
+## Section Two - H2 Header
+
+Another section with different content. This one has a list:
+
+- Item one
+- Item two  
+- Item three
+
+### Subsection B - H3 Header
+
+## Another H2 Header in the Middle - Should not be Title
+
+This demonstrates multiple H1 headers in the same document.
+
+Some text with a [link](https://example.com) and an image reference.
+
+## Final Section
+
+#NotAHeader - this line doesn't start with # at beginning
+  # This is indented, so not a proper header
+
+## Last not H1 Header
+
+Final content goes here.
+
+## Conclusion
+
+That's the end of our sample markdown file!"""
+        with self.assertRaises(Exception) as context:
+            extract_markdown(markdown)
+        expected = "No Heading for Title"
+        self.assertEqual(str(context.exception), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
