@@ -1,5 +1,6 @@
 from textnode import TextType, TextNode
 import os
+import sys
 from shutil import copy, rmtree
 import re
 from gencontent import generate_pages_recursive
@@ -50,8 +51,13 @@ def source_to_dest(source, destination):
     print(f"Final Destination:{os.listdir(destination)}")                
 
 def main():
-    source_to_dest("static/", "public/") 
-    generate_pages_recursive('content', 'template.html', 'public')    
+    if len(sys.argv) > 1:
+        basepath = sys.argv[1]
+    else:
+        basepath = "/"
+
+    source_to_dest("static/", "docs/") 
+    generate_pages_recursive('content', 'template.html', 'docs', basepath)    
 
 if __name__ == "__main__":
     main()

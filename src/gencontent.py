@@ -1,7 +1,7 @@
 import os
 from blocks import markdown_to_html, extract_markdown
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 
     markdown_file = open(from_path)
@@ -21,6 +21,8 @@ def generate_page(from_path, template_path, dest_path):
 
     final_html = markdown_content_template.replace("{{ Title }}", title)
     final_html = final_html.replace("{{ Content }}", node_html)
+    final_html = final_html.replace('href="/',f'href="{basepath}')
+    final_html = final_html.replace('src="/',f'src="{basepath}')
 
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
@@ -28,7 +30,7 @@ def generate_page(from_path, template_path, dest_path):
         dest_file.write(final_html)
     
     
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     print("Generating pages...")
     dest_dir_path_file = os.path.join(dest_dir_path, "index.html")
     directory = os.listdir(dir_path_content)
@@ -39,7 +41,7 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
         print(f"Joined directory/file path {joined}")
         if os.path.isfile(joined):
             if joined.endswith(".md"):
-                generate_page(joined, template_path, dest_dir_path_file)
+                generate_page(joined, template_path, dest_dir_path_file, basepath)
                 
         else:
             print(f"Need to make a new path for next directory")
@@ -48,11 +50,16 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
             if not os.path.exists:
                 print(f"Path {new_dest_path_directory} doesn't exit, making new path before")
                 new_dest_path_directory = os.mkdir(new_dest_path_directory)
-            generate_pages_recursive(joined, template_path, new_dest_path_directory)
+            generate_pages_recursive(joined, template_path, new_dest_path_directory, basepath)
 
 
 
-    """"Create a generate_pages_recursive(dir_path_content, template_path, dest_dir_path) function. It should:
+    """"
+    In generate_page, after you replace the {{ Title }} and {{ Content }}, replace any instances of:
+href="/ with href="{basepath}
+src="/ with src="{basepath}
+    
+    Create a generate_pages_recursive(dir_path_content, template_path, dest_dir_path) function. It should:
 Crawl every entry in the content directory
 
 For each markdown file found, generate a new .html file using the same template.html. 
